@@ -48,23 +48,21 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if strings.HasPrefix(m.Content, config.BotPrefix) {
 		fmt.Printf("%s: %q\n", m.Author.Username, m.Content)
 
-		content := strings.Split(strings.ToLower(m.Content[1:]), " ")
+		content := strings.Split(m.Content[1:], " ")
 
 		if len(content) == 0 {
 			return
 		}
 
-		command, args := content[0], content[1:]
-
-		var response string
+		command, args := strings.ToLower(content[0]), content[1:]
 
 		switch command {
 		case "help", "h":
-			response = "Hello I am BOT."
+			sendText("Hello I am BOT.", s, m)
 		case "ping":
-			response = "Pong"
-		case "time", "T":
-			response = time.Now().Format(time.UnixDate)
+			sendText("Pong", s, m)
+		case "time", "t":
+			sendText(time.Now().Format(time.UnixDate), s, m)
 		case "gopher", "go":
 			f, err := os.Open("./gopher.jpg")
 			if err == nil {
@@ -72,7 +70,7 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 			}
 		case "dog", "cat":
 			sendRedditImage(command+"pictures", s, m)
-		case "pewds", "pewdiepie":
+		case "pewdiepie", "pewds":
 			sendRedditImage("PewdiepieSubmissions", s, m)
 		case "meme", "mm":
 			subreddit := "memes"
@@ -85,12 +83,12 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 				sendRedditImage(args[0], s, m)
 			}
 		}
-
-		if response != "" {
-			_, _ = s.ChannelMessageSend(m.ChannelID, response)
-			fmt.Printf("Sending %q\n", response)
-		}
 	}
+}
+
+func sendText(msg string, s *discordgo.Session, m *discordgo.MessageCreate)  {
+	_, _ = s.ChannelMessageSend(m.ChannelID, msg)
+	fmt.Printf("Sending %q\n", msg)
 }
 
 func sendRedditImage(subreddit string, s *discordgo.Session, m *discordgo.MessageCreate) {
