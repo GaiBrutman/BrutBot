@@ -94,19 +94,19 @@ func sendText(msg string, s *discordgo.Session, m *discordgo.MessageCreate)  {
 func sendRedditImage(subreddit string, s *discordgo.Session, m *discordgo.MessageCreate) {
 	a := time.Now()
 
-	item, err := GetRandImage(subreddit)
+	post, err := GetRandImage(subreddit)
 	fmt.Printf("Get: %.2f secs\n", time.Since(a).Seconds())
 
 	a = time.Now()
 	if err != nil {
 		fmt.Println(err.Error())
 	} else {
-		_, _ = s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("__%s__", item.Title))
-		if item.Body != "" {
-			_, _ = s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("%s", item.Body))
+		_, _ = s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("__%s__", post.Title))
+		if post.Body != "" {
+			_, _ = s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("%s", post.Body))
 		}
-		if item.Image != nil {
-			_, _ = s.ChannelFileSend(m.ChannelID, subreddit+".jpg", item.Image)
+		if post.Image != nil {
+			_, _ = s.ChannelFileSend(m.ChannelID, subreddit+".jpg", post.Image)
 		}
 	}
 

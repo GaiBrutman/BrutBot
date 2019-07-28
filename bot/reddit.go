@@ -1,3 +1,4 @@
+// reddit.go is responsible for fetching and loading Reddit posts
 package bot
 
 import (
@@ -10,15 +11,17 @@ import (
 	"time"
 )
 
+// A struct that represents a Reddit fetch response
 type redditResponseJSON struct {
 	Data struct {
 		Children []struct {
-			Data Item `json:"data"`
+			Data Post `json:"data"`
 		} `json:"children"`
 	} `json:"data"`
 }
 
-type Item struct {
+// A struct that represents a Reddit post
+type Post struct {
 	ID          string `json:"id"`
 	Author      string `json:"author"`
 	Name        string `json:"name"`
@@ -35,11 +38,13 @@ type Item struct {
 }
 
 const (
-	UserAgent = "BrutBot Golang Reddit Reader 1.0"
-	Limit     = 100
+	UserAgent = "BrutBot Golang Reddit Reader 1.0" // The fetch UserAgent
+	Limit     = 100                                // number of Reddit posts fetched
 )
 
-func getItems(subreddit string) ([]Item, error) {
+// Fetches [Limit] posts from a given subreddit
+// Returns a slice of fetched Posts
+func getPosts(subreddit string) ([]Post, error) {
 	url := fmt.Sprintf("http://reddit.com/r/%s/top.json?limit=%dx&t=week", subreddit, Limit)
 	fmt.Printf("fetching %s\n", url)
 
@@ -61,63 +66,70 @@ func getItems(subreddit string) ([]Item, error) {
 		return nil, errors.New(resp.Status)
 	}
 
+	// Decode the JSON into the response struct
 	data := new(redditResponseJSON)
 
 	if err = json.NewDecoder(resp.Body).Decode(data); err != nil {
 		return nil, err
 	}
 
-	items := make([]Item, len(data.Data.Children))
+	// Put the response in a slice of Posts
+	posts := make([]Post, len(data.Data.Children))
 	for i, child := range data.Data.Children {
-		items[i] = child.Data
+		posts[i] = child.Data
 	}
 
-	return items, err
+	return posts, err
 }
 
-var itemsMap = make(map[string]chan Item)
+// maps a subreddit to a Post channel of the subreddit's fetched posts
+var postsMap = make(map[string]chan Post)
 
-func loadImages(items []Item, ch chan<- Item) {
+// Loads the image of a random Reddit post from posts and writes the post into ch
+func loadImages(posts []Post, ch chan<- Post) {
 	for {
+		// Generate pseudo-random slice index
 		rand.Seed(time.Now().UnixNano())
-		n := rand.Intn(len(items))
+		n := rand.Intn(len(posts))
 
-		item := items[n]
+		post := posts[n]
 
-		if item.Image == nil {
-			resp, err := http.Get(item.URL)
+		// fetch the posts image (if necessary)
+		if post.Image == nil {
+			resp, err := http.Get(post.URL)
 
 			if err != nil {
 				continue
 			}
 
 			if resp.StatusCode == http.StatusOK {
-				item.Image = resp.Body
+				post.Image = resp.Body
 			}
 		}
 
-		fmt.Printf("Pushing [%q, Body = %q, Image = %t] into ch\n", item.Title, item.Body, item.Image != nil)
-		ch <- item
+		// Push post into ch
+		fmt.Printf("Pushing [%q, Body = %q, Image = %t] into ch\n", post.Title, post.Body, post.Image != nil)
+		ch <- post
 	}
 }
 
-func GetRandImage(subreddit string) (Item, error) {
-	ch, ok := itemsMap[subreddit]
+func GetRandImage(subreddit string) (Post, error) {
+	ch, ok := postsMap[subreddit]
 	if !ok {
 		var err error
 
-		ch = make(chan Item)
-		items, err := getItems(subreddit)
+		ch = make(chan Post)
+		posts, err := getPosts(subreddit)
 
 		if err != nil {
-			return Item{}, err
+			return Post{}, err
 		}
 
-		go loadImages(items, ch)
-		itemsMap[subreddit] = ch
+		go loadImages(posts, ch)
+		postsMap[subreddit] = ch
 	}
 
-	item := <-ch
+	post := <-ch
 
-	return item, nil
+	return post, nil
 }
