@@ -113,7 +113,7 @@ func loadImages(posts []Post, ch chan<- Post) {
 	}
 }
 
-func GetRandImage(subreddit string) (Post, error) {
+func GetRandPost(subreddit string) (Post, error) {
 	ch, ok := postsMap[subreddit]
 	if !ok {
 		var err error
